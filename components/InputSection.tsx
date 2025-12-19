@@ -1,13 +1,13 @@
+
 import React from 'react';
 import { Inputs, Destination } from '../types';
-import { Wallet, Ship, Landmark, BarChart3, ChevronDown, Settings2 } from 'lucide-react';
+import { Wallet, Landmark, BarChart3, ChevronDown, Settings2 } from 'lucide-react';
 
 interface Props {
   inputs: Inputs;
   setInputs: React.Dispatch<React.SetStateAction<Inputs>>;
 }
 
-// 将子组件定义在外部，防止重新渲染时组件被重新创建导致失去焦点
 const Group = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
   <div className="flex flex-col gap-6 p-7 rounded-[2.5rem] bg-white border border-slate-200 premium-shadow">
      <div className="flex items-center gap-3">
@@ -47,7 +47,7 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs }) => {
     const { name, value } = e.target;
     setInputs(prev => ({
       ...prev,
-      [name]: name === 'destination' ? value : parseFloat(value) || 0
+      [name]: (name === 'destination') ? value : parseFloat(value) || 0
     }));
   };
 
@@ -61,8 +61,26 @@ const InputSection: React.FC<Props> = ({ inputs, setInputs }) => {
 
       <Group title="市场基础" icon={Settings2}>
          <InputField label="基准汇率 c" name="exchangeRate" value={inputs.exchangeRate} onChange={handleChange} step="0.01" suffix="CNY/USD" />
-         <InputField label="交易杂费" name="miscFee" value={inputs.miscFee} onChange={handleChange} prefix="¥" suffix="Total RMB" />
-         <InputField label="单柜运费 d" name="freightCostUSD" value={inputs.freightCostUSD} onChange={handleChange} prefix="$" suffix="Per Box" />
+         
+         {/* 目的港选择 */}
+         <div className="group">
+            <div className="flex justify-between items-center mb-1.5 px-1">
+               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">目的港 (Arrival)</label>
+               <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">柜型联动</span>
+            </div>
+            <div className="relative">
+               <select name="destination" value={inputs.destination} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm font-black text-slate-800 shadow-sm appearance-none">
+                  <option value={Destination.LA}>洛杉矶 (LA) - 20ft</option>
+                  <option value={Destination.NY}>纽约 (NY) - 20ft</option>
+                  <option value={Destination.MIAMI}>迈阿密 (Miami) - 40ft</option>
+                  <option value={Destination.SEATTLE}>西雅图 (Seattle) - 40ft</option>
+               </select>
+               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+         </div>
+
+         <InputField label="交易杂费" name="miscFee" value={inputs.miscFee} onChange={handleChange} prefix="¥" />
+         <InputField label="单柜运费 d" name="freightCostUSD" value={inputs.freightCostUSD} onChange={handleChange} prefix="$" />
       </Group>
 
       <Group title="国内采购" icon={Landmark}>

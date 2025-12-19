@@ -6,8 +6,10 @@ export enum ProductType {
 }
 
 export enum Destination {
-  LA_NY = 'LA_NY',       // 20ft container
-  MIA_SEA = 'MIA_SEA',   // 40ft container
+  LA = 'LA',           // 20ft
+  NY = 'NY',           // 20ft
+  MIAMI = 'MIAMI',     // 40ft
+  SEATTLE = 'SEATTLE', // 40ft
 }
 
 export interface Inputs {
@@ -24,7 +26,7 @@ export interface Inputs {
   sellPriceCarUSD: number; // r
   foreignBalance: number; // Foreign Buyer Budget in USD
   destination: Destination;
-  miscFee: number; // NEW: 杂费 (RMB)
+  miscFee: number; // 杂费 (RMB)
 }
 
 export interface CalculationResult {

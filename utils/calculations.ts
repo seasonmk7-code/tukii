@@ -39,14 +39,25 @@ export const calculateLogistics = (q: number, type: ProductType, destination: De
 
   const numBoxes = Math.ceil(q / itemsPerBox);
   const totalVolume = numBoxes * CARTON1_VOL;
-  const isLargeDest = destination === Destination.MIA_SEA;
+  
+  // Logic: LA, NY -> 20ft; MIAMI, SEATTLE -> 40ft
+  const isLargeDest = destination === Destination.MIAMI || destination === Destination.SEATTLE;
   const containerVol = isLargeDest ? VOL_40FT : VOL_20FT;
+  
   const m = Math.ceil(totalVolume / containerVol);
   const spareCapacity = (numBoxes * itemsPerBox - q) + (Math.max(0, Math.floor((m * containerVol) / CARTON1_VOL) - numBoxes) * itemsPerBox);
   const totalFreightUSD = m * freightCostUSD;
   const unitFreightUSD = q > 0 ? totalFreightUSD / q : 0;
 
-  return { m, totalFreightUSD, unitFreightUSD, spareCapacity, containerVol, totalVolume };
+  return { 
+    m, 
+    totalFreightUSD, 
+    unitFreightUSD, 
+    spareCapacity, 
+    containerVol, 
+    totalVolume,
+    containerType: isLargeDest ? '40ft' : '20ft' as const
+  };
 };
 
 export const calculateScenario = (q: number, type: ProductType, inputs: Inputs): CalculationResult => {
@@ -58,7 +69,7 @@ export const calculateScenario = (q: number, type: ProductType, inputs: Inputs):
   else { basePrice = priceCar; r = sellPriceCarUSD; }
 
   const x = getDiscountedPrice(type, basePrice, q);
-  const { m, totalFreightUSD, unitFreightUSD: F_USD, spareCapacity, containerVol, totalVolume } = calculateLogistics(q, type, destination, d);
+  const { m, totalFreightUSD, unitFreightUSD: F_USD, spareCapacity, containerVol, totalVolume, containerType } = calculateLogistics(q, type, destination, d);
   const containerUtilization = m > 0 ? (totalVolume / (m * containerVol)) * 100 : 0;
 
   const avgMiscRMB = miscFee / q;
@@ -76,8 +87,9 @@ export const calculateScenario = (q: number, type: ProductType, inputs: Inputs):
   const jointTotalProfitUSD = domesticTotalProfitUSD + foreignTotalProfitUSD;
   const domesticTotalCostRMB = q * x + miscFee;
 
+  // Fix: explicitly cast containerType to the expected union type
   return {
-    quantity: q, unitPriceRMB: x, containerCount: m, containerType: destination === Destination.MIA_SEA ? '40ft' : '20ft',
+    quantity: q, unitPriceRMB: x, containerCount: m, containerType: containerType as '20ft' | '40ft',
     containerUtilization, spareCapacity, totalFreightUSD, avgMiscRMB, N_USD, FOB_USD, CFR_USD, CIF_USD, I_USD, F_USD,
     foreignActualCostUSD, domesticUnitProfitUSD, domesticTotalProfitUSD, foreignUnitProfitUSD, foreignTotalProfitUSD, jointTotalProfitUSD, domesticTotalCostRMB
   };

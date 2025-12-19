@@ -66,8 +66,9 @@ const INITIAL_INPUTS: Inputs = {
   exchangeRate: 7.1, freightCostUSD: 5000,
   balance: 500, reserve: 50, margin: 0.2,
   sellPriceSteelUSD: 650, sellPricePVUSD: 110, sellPriceCarUSD: 16000,
-  foreignBalance: 2000000, destination: Destination.LA_NY,
-  miscFee: 9000, // INITIAL MISC FEE
+  foreignBalance: 2000000, 
+  destination: Destination.LA, // Default to LA (20ft)
+  miscFee: 9000,
 };
 
 const App: React.FC = () => {

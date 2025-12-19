@@ -239,8 +239,11 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
       const avgMiscRMB = inputs.miscFee / qty;
       const x = (fob * inputs.exchangeRate) / (1 + inputs.margin) - avgMiscRMB; 
       
+      // Fix: Use correct Destination enum values to determine containerType
+      const isLargeDest = inputs.destination === Destination.MIAMI || inputs.destination === Destination.SEATTLE;
+
       return {
-          quantity: qty, unitPriceRMB: x > 0 ? x : 0, containerCount: metrics.containerCount, containerType: inputs.destination === Destination.MIA_SEA ? '40ft' : '20ft', 
+          quantity: qty, unitPriceRMB: x > 0 ? x : 0, containerCount: metrics.containerCount, containerType: isLargeDest ? '40ft' : '20ft', 
           containerUtilization: 0, spareCapacity: 0, totalFreightUSD: metrics.totalFreightUSD, avgMiscRMB: avgMiscRMB,
           N_USD: ((x + avgMiscRMB) / inputs.exchangeRate), FOB_USD: fob, CFR_USD: fob + metrics.unitFreightUSD,
           CIF_USD: fob + metrics.unitFreightUSD + metrics.insuranceUSD, I_USD: metrics.insuranceUSD, F_USD: metrics.unitFreightUSD,
