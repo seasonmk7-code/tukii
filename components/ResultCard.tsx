@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { CalculationResult, ProductType, Inputs } from '../types';
-import { TrendingUp, Package, Search, Zap, Box, ArrowRight, ShieldCheck, Truck, Scale, Coins, DollarSign, Target, Sparkles, AlertCircle } from 'lucide-react';
+import { TrendingUp, Package, Search, Zap, Box, ArrowRight, ShieldCheck, Truck, Scale, Coins, DollarSign, Target, Sparkles, AlertCircle, RotateCcw } from 'lucide-react';
 import CalculationDetailModal from './CalculationDetailModal';
 import { findDominantMargin } from '../utils/calculations';
 
@@ -66,8 +66,19 @@ const ResultCard: React.FC<Props> = ({ type, result, recommendedQuantity, onQuan
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 group focus-within:ring-2 ring-indigo-500/20 transition-all">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">交易数量</label>
+             <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 group focus-within:ring-2 ring-indigo-500/20 transition-all relative">
+                <div className="flex justify-between items-center mb-1">
+                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">交易数量</label>
+                   {isManual && (
+                     <button 
+                       onClick={() => onQuantityChange(null)}
+                       className="p-1 hover:bg-white rounded-md text-indigo-500 transition-colors"
+                       title="恢复推荐数量"
+                     >
+                       <RotateCcw className="w-3 h-3" />
+                     </button>
+                   )}
+                </div>
                 <div className="flex items-baseline gap-2">
                   <input
                     type="number"
@@ -75,8 +86,15 @@ const ResultCard: React.FC<Props> = ({ type, result, recommendedQuantity, onQuan
                     value={displayQuantity}
                     onChange={(e) => onQuantityChange(parseInt(e.target.value) || 0)}
                   />
-                  <span className="text-xs font-bold text-slate-400">UNIT</span>
+                  <span className="text-xs font-bold text-slate-400 shrink-0">UNIT</span>
                 </div>
+                {isManual && (
+                  <div className="absolute -bottom-1 right-4">
+                    <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase tracking-tighter">
+                      Manual
+                    </span>
+                  </div>
+                )}
              </div>
              <div className="p-4 bg-slate-900 rounded-3xl border border-slate-800 flex flex-col justify-center">
                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">预算占用</label>

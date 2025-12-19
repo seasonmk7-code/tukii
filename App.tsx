@@ -96,8 +96,9 @@ const App: React.FC = () => {
                 <RoomProvider 
                   id={connection.room} 
                   initialStorage={{
-                      inputs: new LiveObject(localInputs),
-                      manualQuantities: new LiveObject({ steel: localManualQ[ProductType.STEEL] ?? -1, pv: localManualQ[ProductType.PV] ?? -1, car: localManualQ[ProductType.CAR] ?? -1 })
+                      // Added as any to bypass index signature missing error in Inputs
+                      inputs: new LiveObject(localInputs as any),
+                      manualQuantities: new LiveObject({ steel: localManualQ[ProductType.STEEL] ?? -1, pv: localManualQ[ProductType.PV] ?? -1, car: localManualQ[ProductType.CAR] ?? -1 } as any)
                   }}
                 >
                    <SyncedApp onDisconnect={handleDisconnect} localFallback={{ inputs: localInputs, manualQ: localManualQ }} />
@@ -117,15 +118,17 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
     const others = useOthers();
     const status = useStatus();
     
-    const updateInputsRemote = useMutation(({ storage }, updateFnOrVal) => {
-        const root = storage.get("inputs");
+    // Cast storage.get to any to access toObject and update
+    const updateInputsRemote = useMutation(({ storage }, updateFnOrVal: any) => {
+        const root = storage.get("inputs") as any;
         if (!root) return;
         const next = typeof updateFnOrVal === 'function' ? updateFnOrVal(root.toObject()) : updateFnOrVal;
         root.update(next);
     }, []);
 
+    // Cast storage.get to any to access set method
     const updateManualQRemote = useMutation(({ storage }, { type, val }: { type: ProductType, val: number | null }) => {
-        const root = storage.get("manualQuantities");
+        const root = storage.get("manualQuantities") as any;
         if (!root) return;
         const key = type === ProductType.STEEL ? 'steel' : type === ProductType.PV ? 'pv' : 'car';
         root.set(key, val === null ? -1 : val);
@@ -154,15 +157,26 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
     }
 
     const inputs = remoteInputs;
-    const manualQRaw = remoteManualQ;
+    // Cast remoteManualQ to any to access properties safely
+    const manualQRaw = remoteManualQ as any;
     const manualQuantities = {
         [ProductType.STEEL]: manualQRaw.steel === -1 ? null : manualQRaw.steel,
         [ProductType.PV]: manualQRaw.pv === -1 ? null : manualQRaw.pv,
         [ProductType.CAR]: manualQRaw.car === -1 ? null : manualQRaw.car,
     };
 
+    // Correctly cast and access count via length property
     return (
-        <StatelessApp inputs={inputs as Inputs} setInputs={updateInputsRemote as any} manualQuantities={manualQuantities} setManualQuantities={(type, val) => updateManualQRemote({ type, val })} onConnect={() => {}} onDisconnect={onDisconnect} isConnected={true} userCount={others.count + 1} />
+        <StatelessApp 
+            inputs={inputs as unknown as Inputs} 
+            setInputs={updateInputsRemote as any} 
+            manualQuantities={manualQuantities} 
+            setManualQuantities={(type, val) => updateManualQRemote({ type, val })} 
+            onConnect={() => {}} 
+            onDisconnect={onDisconnect} 
+            isConnected={true} 
+            userCount={others.length + 1} 
+        />
     );
 }
 
