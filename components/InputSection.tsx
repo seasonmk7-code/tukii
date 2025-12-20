@@ -8,7 +8,8 @@ interface Props {
   setInputs: React.Dispatch<React.SetStateAction<Inputs>>;
 }
 
-const Group = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
+// Fix: Use React.FC to properly type children and avoid TS errors in JSX where children prop is required but passed via JSX structure
+const Group: React.FC<{ title: string; icon: any; children: React.ReactNode }> = ({ title, icon: Icon, children }) => (
   <div className="flex flex-col gap-6 p-7 rounded-[2.5rem] bg-white border border-slate-200 premium-shadow">
      <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
