@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, ErrorInfo, ReactNode, Component } from 'react';
+import React, { useState, useMemo, ErrorInfo, ReactNode } from 'react';
 import { LiveObject } from "@liveblocks/client";
 import { LiveblocksProvider, RoomProvider, useStorage, useMutation, useOthers, useStatus } from "@liveblocks/react";
 import { Inputs, Destination, ProductType } from './types';
@@ -23,7 +23,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Corrected inheritance from React.Component and removed redundant state member declaration to resolve context errors
+// Fix: Explicitly use React.Component to ensure TypeScript recognizes state, props, and setState correctly.
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -67,8 +67,14 @@ const INITIAL_INPUTS: Inputs = {
   balance: 500, reserve: 50, margin: 0.2,
   sellPriceSteelUSD: 650, sellPricePVUSD: 110, sellPriceCarUSD: 16000,
   foreignBalance: 2000000, 
-  destination: Destination.LA, // Default to LA (20ft)
+  destination: Destination.LA, 
   miscFee: 9000,
+  exportDutySteel: 0.05,
+  exportDutyPV: 0,
+  exportDutyCar: 0.1,
+  importDutySteel: 0.25, // Updated to 0.25
+  importDutyPV: 0.25,    // Updated to 0.25
+  importDutyCar: 0.25,   // Updated to 0.25
 };
 
 const App: React.FC = () => {
@@ -97,7 +103,6 @@ const App: React.FC = () => {
                 <RoomProvider 
                   id={connection.room} 
                   initialStorage={{
-                      // Added as any to bypass index signature missing error in Inputs
                       inputs: new LiveObject(localInputs as any),
                       manualQuantities: new LiveObject({ steel: localManualQ[ProductType.STEEL] ?? -1, pv: localManualQ[ProductType.PV] ?? -1, car: localManualQ[ProductType.CAR] ?? -1 } as any)
                   }}
@@ -117,9 +122,7 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
     const remoteInputs = useStorage((root) => root.inputs);
     const remoteManualQ = useStorage((root) => root.manualQuantities);
     const others = useOthers();
-    const status = useStatus();
     
-    // Cast storage.get to any to access toObject and update
     const updateInputsRemote = useMutation(({ storage }, updateFnOrVal: any) => {
         const root = storage.get("inputs") as any;
         if (!root) return;
@@ -127,7 +130,6 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
         root.update(next);
     }, []);
 
-    // Cast storage.get to any to access set method
     const updateManualQRemote = useMutation(({ storage }, { type, val }: { type: ProductType, val: number | null }) => {
         const root = storage.get("manualQuantities") as any;
         if (!root) return;
@@ -135,7 +137,6 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
         root.set(key, val === null ? -1 : val);
     }, []);
 
-    // 重要：如果存储尚未加载，显示加载状态以防止触发未就绪的 Mutation
     if (remoteInputs === null || remoteManualQ === null) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6">
@@ -158,7 +159,6 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
     }
 
     const inputs = remoteInputs;
-    // Cast remoteManualQ to any to access properties safely
     const manualQRaw = remoteManualQ as any;
     const manualQuantities = {
         [ProductType.STEEL]: manualQRaw.steel === -1 ? null : manualQRaw.steel,
@@ -166,7 +166,6 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
         [ProductType.CAR]: manualQRaw.car === -1 ? null : manualQRaw.car,
     };
 
-    // Correctly cast and access count via length property
     return (
         <StatelessApp 
             inputs={inputs as unknown as Inputs} 

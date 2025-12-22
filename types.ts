@@ -27,6 +27,13 @@ export interface Inputs {
   foreignBalance: number; // Foreign Buyer Budget in USD
   destination: Destination;
   miscFee: number; // 杂费 (RMB)
+  // New: Customizable Duties
+  exportDutySteel: number;
+  exportDutyPV: number;
+  exportDutyCar: number;
+  importDutySteel: number;
+  importDutyPV: number;
+  importDutyCar: number;
 }
 
 export interface CalculationResult {
@@ -51,6 +58,8 @@ export interface CalculationResult {
   foreignTotalProfitUSD: number;
   jointTotalProfitUSD: number;
   domesticTotalCostRMB: number;
+  exportDutyRate: number;
+  importDutyRate: number;
   isOptimal?: boolean;
 }
 

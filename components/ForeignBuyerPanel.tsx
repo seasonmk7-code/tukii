@@ -20,11 +20,11 @@ interface BuyerCardProps {
 const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPrice, inputs, localState, updateState, handleSync, setModalType }) => {
     const { fob, qty, desiredMargin } = localState;
     const metrics = calculateForeignMetrics(fob, qty, type, inputs);
-    const targetFOB = calculateTargetFOB(desiredMargin, sellPrice, metrics.F_USD);
     
-    // 计算建议价格下的预览数据
+    let iDuty = type === ProductType.STEEL ? inputs.importDutySteel : type === ProductType.PV ? inputs.importDutyPV : inputs.importDutyCar;
+    const targetFOB = calculateTargetFOB(desiredMargin, sellPrice, metrics.F_USD, iDuty);
+    
     const previewMetrics = calculateForeignMetrics(targetFOB, qty, type, inputs);
-
     const totalLandedCost = metrics.totalLandedCost;
     const isAffordable = totalLandedCost <= inputs.foreignBalance;
     const budgetDelta = inputs.foreignBalance - totalLandedCost;
@@ -36,7 +36,6 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
         <div className="bg-slate-800 rounded-[2rem] p-6 border border-slate-700 shadow-lg relative overflow-hidden group flex flex-col h-full transition-all text-slate-100">
             <div className={`absolute top-0 right-0 w-40 h-40 ${colorClass} opacity-[0.08] rounded-bl-[100px] pointer-events-none transition-opacity`}></div>
 
-            {/* Header */}
             <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4 relative z-10">
                 <h3 className="font-bold text-white text-lg tracking-wide">{label}</h3>
                 <div className="text-right">
@@ -46,7 +45,6 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
             </div>
 
             <div className="space-y-6 relative z-10 flex-grow">
-                {/* Simulation Inputs */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
@@ -79,25 +77,23 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                     </div>
                 </div>
 
-                {/* Logistics Summary */}
-                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 grid grid-cols-2 gap-4 text-xs">
                     <div className="flex items-center gap-3">
                         <Container className="w-4 h-4 text-slate-500" />
                         <div>
                             <p className="text-[8px] font-bold text-slate-500 uppercase">货柜数量</p>
-                            <p className="text-xs font-black text-white">{metrics.containerCount} 个</p>
+                            <p className="font-black text-white">{metrics.containerCount} 个</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <Truck className="w-4 h-4 text-slate-500" />
                         <div>
-                            <p className="text-[8px] font-bold text-slate-500 uppercase">总计运费</p>
-                            <p className="text-xs font-black text-white">{fmtUSD(metrics.totalFreightUSD)}</p>
+                            <p className="text-[8px] font-bold text-slate-500 uppercase">单位进口税</p>
+                            <p className="font-black text-white">{((iDuty)*100).toFixed(0)}%</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Financial Results (Landed Cost) */}
                 <div className={`rounded-[2rem] p-5 border ${isAffordable ? 'bg-emerald-950/20 border-emerald-800/50' : 'bg-rose-950/20 border-rose-800/50'} relative`}>
                     <button onClick={() => setModalType(type)} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-1.5 bg-slate-900/50 rounded-lg">
                         <Search className="w-3.5 h-3.5"/>
@@ -114,14 +110,10 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                                 <span className={`font-black text-2xl ${isAffordable ? 'text-white' : 'text-rose-400'}`}>{fmtUSD(totalLandedCost)}</span>
                                 {isAffordable ? <CheckCircle2 className="w-5 h-5 text-emerald-500"/> : <AlertTriangle className="w-5 h-5 text-rose-500"/>}
                             </div>
-                            <p className={`text-[10px] mt-1 font-bold ${isAffordable ? 'text-emerald-500/70' : 'text-rose-500/70'}`}>
-                                {isAffordable ? '预算盈余' : '超出预算'}: {fmtCompact(Math.abs(budgetDelta))}
-                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Profit Split Comparison */}
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
                     <div className="space-y-1">
                         <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">🇨🇳 卖家总利润</p>
@@ -134,7 +126,6 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                 </div>
             </div>
 
-            {/* Suggested FOB Section with Preview */}
             <div className="bg-indigo-950/30 rounded-[2rem] p-5 border border-indigo-500/20 mt-8">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -152,7 +143,6 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                     </div>
                 </div>
 
-                {/* Detailed Preview Stats */}
                 <div className="mb-4 grid grid-cols-3 gap-2 px-1 text-[9px] font-bold">
                     <div className="flex flex-col">
                         <span className="text-slate-400 uppercase opacity-60 mb-0.5">建议单价</span>
@@ -237,10 +227,11 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
       const metrics = calculateForeignMetrics(fob, qty, type, inputs);
       const domesticProfit = calculateDomesticProfitAtFOB(fob, qty, type, inputs);
       const avgMiscRMB = inputs.miscFee / qty;
-      const x = (fob * inputs.exchangeRate) / (1 + inputs.margin) - avgMiscRMB; 
+      const x = (fob * inputs.exchangeRate) / (1 + inputs.margin + (type === ProductType.STEEL ? inputs.exportDutySteel : type === ProductType.PV ? inputs.exportDutyPV : inputs.exportDutyCar)) - avgMiscRMB; 
       
-      // Fix: Use correct Destination enum values to determine containerType
       const isLargeDest = inputs.destination === Destination.MIAMI || inputs.destination === Destination.SEATTLE;
+      const iDuty = type === ProductType.STEEL ? inputs.importDutySteel : type === ProductType.PV ? inputs.importDutyPV : inputs.importDutyCar;
+      const eDuty = type === ProductType.STEEL ? inputs.exportDutySteel : type === ProductType.PV ? inputs.exportDutyPV : inputs.exportDutyCar;
 
       return {
           quantity: qty, unitPriceRMB: x > 0 ? x : 0, containerCount: metrics.containerCount, containerType: isLargeDest ? '40ft' : '20ft', 
@@ -249,7 +240,7 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
           CIF_USD: fob + metrics.unitFreightUSD + metrics.insuranceUSD, I_USD: metrics.insuranceUSD, F_USD: metrics.unitFreightUSD,
           foreignActualCostUSD: metrics.unitCost, domesticUnitProfitUSD: (domesticProfit / qty), domesticTotalProfitUSD: domesticProfit,
           foreignUnitProfitUSD: metrics.unitProfit, foreignTotalProfitUSD: metrics.totalProfit, jointTotalProfitUSD: domesticProfit + metrics.totalProfit,
-          domesticTotalCostRMB: 0
+          domesticTotalCostRMB: 0, exportDutyRate: eDuty, importDutyRate: iDuty
       } as CalculationResult;
   };
 
@@ -266,23 +257,6 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
                 <h2 className="text-3xl font-black tracking-tight">国外买家模拟器 (Forward Simulation)</h2>
                 <p className="text-slate-400 text-sm mt-1">深度模拟国外买家采购决策，实时验证落地成本与利润空间。</p>
             </div>
-        </div>
-        
-        <div className="flex items-center gap-5 bg-black/40 p-4 rounded-2xl border border-slate-700/50 shadow-inner">
-             <div className="flex items-center gap-2 text-indigo-400">
-                 <Wallet className="w-5 h-5" />
-                 <span className="text-xs font-black uppercase tracking-widest">国外采购预算限额</span>
-             </div>
-             <div className="flex items-center">
-                 <span className="text-white font-black text-xl mr-1">$</span>
-                 <input 
-                     type="number"
-                     value={inputs.foreignBalance / 10000}
-                     onChange={(e) => setInputs(prev => ({ ...prev, foreignBalance: (parseFloat(e.target.value) || 0) * 10000 }))}
-                     className="w-24 bg-transparent text-white font-black text-xl border-b-2 border-slate-600 focus:border-indigo-500 outline-none text-right transition-colors"
-                 />
-                 <span className="text-white font-black text-xl ml-1">万</span>
-             </div>
         </div>
       </div>
 
