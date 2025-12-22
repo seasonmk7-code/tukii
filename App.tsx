@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo, ErrorInfo, ReactNode } from 'react';
+import React, { Component, useState, useMemo, ErrorInfo, ReactNode } from 'react';
 import { LiveObject } from "@liveblocks/client";
-import { LiveblocksProvider, RoomProvider, useStorage, useMutation, useOthers, useStatus } from "@liveblocks/react";
+import { LiveblocksProvider, RoomProvider, useStorage, useMutation, useOthers } from "@liveblocks/react";
 import { Inputs, Destination, ProductType } from './types';
 import InputSection from './components/InputSection';
 import ResultCard from './components/ResultCard';
@@ -10,8 +10,9 @@ import GeminiAdvisor from './components/GeminiAdvisor';
 import ExchangeRateChart from './components/ExchangeRateChart';
 import ForeignBuyerPanel from './components/ForeignBuyerPanel';
 import MultiplayerConnect from './components/MultiplayerConnect';
+import AnnouncementModal from './components/AnnouncementModal';
 import { findOptimalQuantity, calculateScenario } from './utils/calculations';
-import { Check, AlertTriangle, Layers, Globe, Activity, Loader2 } from 'lucide-react';
+import { Check, AlertTriangle, Layers, Globe, Activity, Loader2, Info } from 'lucide-react';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -23,18 +24,23 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fix: Explicitly use React.Component to ensure TypeScript recognizes state, props, and setState correctly.
+/**
+ * ErrorBoundary class component.
+ * Fix: Use React.Component explicitly and property-based state initialization
+ * to ensure TypeScript correctly recognizes inherited members (state, props, setState).
+ */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  // Use class property for state initialization to ensure proper type inference
+  public override state: ErrorBoundaryState = { hasError: false, error: null };
+
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
+
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Multiplayer Error:", error, errorInfo);
   }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -72,9 +78,9 @@ const INITIAL_INPUTS: Inputs = {
   exportDutySteel: 0.05,
   exportDutyPV: 0,
   exportDutyCar: 0.1,
-  importDutySteel: 0.25, // Updated to 0.25
-  importDutyPV: 0.25,    // Updated to 0.25
-  importDutyCar: 0.25,   // Updated to 0.25
+  importDutySteel: 0.25, 
+  importDutyPV: 0.25,    
+  importDutyCar: 0.25,   
 };
 
 const App: React.FC = () => {
@@ -83,6 +89,7 @@ const App: React.FC = () => {
   const [localManualQ, setLocalManualQ] = useState<Record<ProductType, number | null>>({
     [ProductType.STEEL]: null, [ProductType.PV]: null, [ProductType.CAR]: null,
   });
+  const [isAnnounceOpen, setIsAnnounceOpen] = useState(true);
 
   const handleConnect = (apiKey: string, room: string) => {
     if (!apiKey.trim()) return;
@@ -93,6 +100,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen relative pb-20 selection:bg-indigo-500 selection:text-white">
+      <AnnouncementModal isOpen={isAnnounceOpen} onClose={() => setIsAnnounceOpen(false)} />
+      
       <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-0 opacity-[0.02] select-none overflow-hidden">
         <div className="transform -rotate-12 text-[20vw] font-black text-slate-900 whitespace-nowrap">TUKI KING</div>
       </div>
@@ -107,18 +116,30 @@ const App: React.FC = () => {
                       manualQuantities: new LiveObject({ steel: localManualQ[ProductType.STEEL] ?? -1, pv: localManualQ[ProductType.PV] ?? -1, car: localManualQ[ProductType.CAR] ?? -1 } as any)
                   }}
                 >
-                   <SyncedApp onDisconnect={handleDisconnect} localFallback={{ inputs: localInputs, manualQ: localManualQ }} />
+                   <SyncedApp 
+                     onDisconnect={handleDisconnect} 
+                     localFallback={{ inputs: localInputs, manualQ: localManualQ }}
+                     openAnnounce={() => setIsAnnounceOpen(true)}
+                   />
                 </RoomProvider>
              </LiveblocksProvider>
           </ErrorBoundary>
       ) : (
-          <StatelessApp inputs={localInputs} setInputs={setLocalInputs} manualQuantities={localManualQ} setManualQuantities={(t, v) => setLocalManualQ(p => ({...p, [t]: v}))} onConnect={handleConnect} isConnected={false} />
+          <StatelessApp 
+            inputs={localInputs} 
+            setInputs={setLocalInputs} 
+            manualQuantities={localManualQ} 
+            setManualQuantities={(t, v) => setLocalManualQ(p => ({...p, [t]: v}))} 
+            onConnect={handleConnect} 
+            isConnected={false} 
+            openAnnounce={() => setIsAnnounceOpen(true)}
+          />
       )}
     </div>
   );
 };
 
-const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({ onDisconnect, localFallback }) => {
+const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any, openAnnounce: () => void }> = ({ onDisconnect, localFallback, openAnnounce }) => {
     const remoteInputs = useStorage((root) => root.inputs);
     const remoteManualQ = useStorage((root) => root.manualQuantities);
     const others = useOthers();
@@ -176,15 +197,24 @@ const SyncedApp: React.FC<{ onDisconnect: () => void, localFallback: any }> = ({
             onDisconnect={onDisconnect} 
             isConnected={true} 
             userCount={others.length + 1} 
+            openAnnounce={openAnnounce}
         />
     );
 }
 
 interface StatelessProps {
-    inputs: Inputs; setInputs: React.Dispatch<React.SetStateAction<Inputs>>; manualQuantities: Record<ProductType, number | null>; setManualQuantities: (type: ProductType, val: number | null) => void; onConnect: (key: string, room: string) => void; onDisconnect?: () => void; isConnected: boolean; userCount?: number;
+    inputs: Inputs; 
+    setInputs: React.Dispatch<React.SetStateAction<Inputs>>; 
+    manualQuantities: Record<ProductType, number | null>; 
+    setManualQuantities: (type: ProductType, val: number | null) => void; 
+    onConnect: (key: string, room: string) => void; 
+    onDisconnect?: () => void; 
+    isConnected: boolean; 
+    userCount?: number;
+    openAnnounce: () => void;
 }
 
-const StatelessApp: React.FC<StatelessProps> = ({ inputs, setInputs, manualQuantities, setManualQuantities, onConnect, onDisconnect, isConnected, userCount }) => {
+const StatelessApp: React.FC<StatelessProps> = ({ inputs, setInputs, manualQuantities, setManualQuantities, onConnect, onDisconnect, isConnected, userCount, openAnnounce }) => {
     const [copied, setCopied] = useState(false);
 
     const optimizationResults = useMemo(() => ({
@@ -209,9 +239,16 @@ const StatelessApp: React.FC<StatelessProps> = ({ inputs, setInputs, manualQuant
       <div className="max-w-[1600px] mx-auto px-6 py-12 relative z-10">
         <header className="mb-16 flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-6 group">
-             <div className="w-16 h-16 bg-slate-900 rounded-[24px] flex items-center justify-center text-white shadow-2xl transition-transform group-hover:rotate-12">
-                <Layers className="w-8 h-8" />
-             </div>
+             {/* Open Announcement Button */}
+             <button 
+                onClick={openAnnounce}
+                className="w-16 h-16 bg-indigo-600 rounded-[24px] flex flex-col items-center justify-center text-white shadow-2xl transition-transform hover:scale-110 active:scale-95 group/announce shrink-0"
+                title="查看实操公告"
+             >
+                <Info className="w-8 h-8" />
+                <span className="text-[8px] font-black uppercase tracking-tighter mt-1">公告</span>
+             </button>
+             
              <div>
                 <h1 className="text-5xl font-[900] text-slate-900 tracking-tighter mb-1">Tuki大王 贸易大脑</h1>
                 <div className="flex items-center gap-4">

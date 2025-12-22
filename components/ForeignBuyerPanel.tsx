@@ -11,26 +11,33 @@ interface BuyerCardProps {
     colorClass: string;
     sellPrice: number;
     inputs: Inputs;
+    setInputs: React.Dispatch<React.SetStateAction<Inputs>>;
     localState: { fob: number; qty: number; desiredMargin: number };
     updateState: (type: ProductType, field: 'fob' | 'qty' | 'desiredMargin', value: number) => void;
     handleSync: (type: ProductType) => void;
     setModalType: (type: ProductType) => void;
 }
 
-const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPrice, inputs, localState, updateState, handleSync, setModalType }) => {
+const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPrice, inputs, setInputs, localState, updateState, handleSync, setModalType }) => {
     const { fob, qty, desiredMargin } = localState;
     const metrics = calculateForeignMetrics(fob, qty, type, inputs);
     
-    let iDuty = type === ProductType.STEEL ? inputs.importDutySteel : type === ProductType.PV ? inputs.importDutyPV : inputs.importDutyCar;
+    // Get corresponding duty names for input state updates
+    const dutyKey = type === ProductType.STEEL ? 'importDutySteel' : type === ProductType.PV ? 'importDutyPV' : 'importDutyCar';
+    const iDuty = inputs[dutyKey as keyof Inputs] as number;
+    
     const targetFOB = calculateTargetFOB(desiredMargin, sellPrice, metrics.F_USD, iDuty);
     
     const previewMetrics = calculateForeignMetrics(targetFOB, qty, type, inputs);
     const totalLandedCost = metrics.totalLandedCost;
     const isAffordable = totalLandedCost <= inputs.foreignBalance;
-    const budgetDelta = inputs.foreignBalance - totalLandedCost;
+
+    const handleDutyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseFloat(e.target.value) / 100 || 0;
+        setInputs(prev => ({ ...prev, [dutyKey]: val }));
+    };
 
     const fmtUSD = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const fmtCompact = (n: number) => `$${(n/1000).toFixed(1)}k`;
 
     return (
         <div className="bg-slate-800 rounded-[2rem] p-6 border border-slate-700 shadow-lg relative overflow-hidden group flex flex-col h-full transition-all text-slate-100">
@@ -48,7 +55,7 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                            <Calculator className="w-3.5 h-3.5" /> 模拟交易参数
+                            <Calculator className="w-3.5 h-3.5" /> 模拟交易参数 (Sim Parameters)
                         </h4>
                         <button onClick={() => handleSync(type)} className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors">
                             <RefreshCw className="w-3 h-3" /> 同步国内最优
@@ -75,6 +82,23 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                             />
                         </div>
                     </div>
+
+                    {/* Duty Sync Input */}
+                    <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-2xl flex items-center justify-between group/duty">
+                        <div className="flex items-center gap-2">
+                             <Truck className="w-3.5 h-3.5 text-indigo-400" />
+                             <label className="text-[9px] font-black text-indigo-300 uppercase">进口税率 (Import Duty)</label>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <input 
+                                type="number" 
+                                value={Math.round(iDuty * 100)}
+                                onChange={handleDutyChange}
+                                className="w-10 bg-slate-900/50 text-white font-black text-xs text-right outline-none rounded p-1 border border-indigo-500/20 focus:border-indigo-400"
+                            />
+                            <span className="text-[10px] font-bold text-indigo-400">%</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="p-4 bg-slate-900/50 rounded-2xl border border-slate-700/50 grid grid-cols-2 gap-4 text-xs">
@@ -86,10 +110,10 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Truck className="w-4 h-4 text-slate-500" />
+                        <Coins className="w-4 h-4 text-slate-500" />
                         <div>
-                            <p className="text-[8px] font-bold text-slate-500 uppercase">单位进口税</p>
-                            <p className="font-black text-white">{((iDuty)*100).toFixed(0)}%</p>
+                            <p className="text-[8px] font-bold text-slate-500 uppercase">进口杂费</p>
+                            <p className="font-black text-white">+5%</p>
                         </div>
                     </div>
                 </div>
@@ -107,7 +131,7 @@ const BuyerCard: React.FC<BuyerCardProps> = ({ type, label, colorClass, sellPric
                         <div>
                             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">落地总成本 (Total Landed)</p>
                             <div className="flex items-baseline justify-between">
-                                <span className={`font-black text-2xl ${isAffordable ? 'text-white' : 'text-rose-400'}`}>{fmtUSD(totalLandedCost)}</span>
+                                <span className={`font-black text-2xl ${isAffordable ? 'text-white' : 'text-rose-400'}`}>{fmtUSD(metrics.totalLandedCost)}</span>
                                 {isAffordable ? <CheckCircle2 className="w-5 h-5 text-emerald-500"/> : <AlertTriangle className="w-5 h-5 text-rose-500"/>}
                             </div>
                         </div>
@@ -227,18 +251,19 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
       const metrics = calculateForeignMetrics(fob, qty, type, inputs);
       const domesticProfit = calculateDomesticProfitAtFOB(fob, qty, type, inputs);
       const avgMiscRMB = inputs.miscFee / qty;
-      const x = (fob * inputs.exchangeRate) / (1 + inputs.margin + (type === ProductType.STEEL ? inputs.exportDutySteel : type === ProductType.PV ? inputs.exportDutyPV : inputs.exportDutyCar)) - avgMiscRMB; 
+      
+      const eDuty = type === ProductType.STEEL ? inputs.exportDutySteel : type === ProductType.PV ? inputs.exportDutyPV : inputs.exportDutyCar;
+      const iDuty = type === ProductType.STEEL ? inputs.importDutySteel : type === ProductType.PV ? inputs.importDutyPV : inputs.importDutyCar;
+      const x = (fob * inputs.exchangeRate) / (1 + inputs.margin + eDuty) - avgMiscRMB; 
       
       const isLargeDest = inputs.destination === Destination.MIAMI || inputs.destination === Destination.SEATTLE;
-      const iDuty = type === ProductType.STEEL ? inputs.importDutySteel : type === ProductType.PV ? inputs.importDutyPV : inputs.importDutyCar;
-      const eDuty = type === ProductType.STEEL ? inputs.exportDutySteel : type === ProductType.PV ? inputs.exportDutyPV : inputs.exportDutyCar;
 
       return {
           quantity: qty, unitPriceRMB: x > 0 ? x : 0, containerCount: metrics.containerCount, containerType: isLargeDest ? '40ft' : '20ft', 
           containerUtilization: 0, spareCapacity: 0, totalFreightUSD: metrics.totalFreightUSD, avgMiscRMB: avgMiscRMB,
           N_USD: ((x + avgMiscRMB) / inputs.exchangeRate), FOB_USD: fob, CFR_USD: fob + metrics.unitFreightUSD,
           CIF_USD: fob + metrics.unitFreightUSD + metrics.insuranceUSD, I_USD: metrics.insuranceUSD, F_USD: metrics.unitFreightUSD,
-          foreignActualCostUSD: metrics.unitCost, domesticUnitProfitUSD: (domesticProfit / qty), domesticTotalProfitUSD: domesticProfit,
+          foreignActualCostUSD: metrics.unitCost, domesticUnitProfitUSD: (domesticProfit / (qty || 1)), domesticTotalProfitUSD: domesticProfit,
           foreignUnitProfitUSD: metrics.unitProfit, foreignTotalProfitUSD: metrics.totalProfit, jointTotalProfitUSD: domesticProfit + metrics.totalProfit,
           domesticTotalCostRMB: 0, exportDutyRate: eDuty, importDutyRate: iDuty
       } as CalculationResult;
@@ -255,15 +280,15 @@ const ForeignBuyerPanel: React.FC<Props> = ({ inputs, setInputs, results }) => {
             </div>
             <div>
                 <h2 className="text-3xl font-black tracking-tight">国外买家模拟器 (Forward Simulation)</h2>
-                <p className="text-slate-400 text-sm mt-1">深度模拟国外买家采购决策，实时验证落地成本与利润空间。</p>
+                <p className="text-slate-400 text-sm mt-1">深度模拟国外买家采购决策，实时验证落地成本与利润空间。修改税率将同步至全局设置。</p>
             </div>
         </div>
       </div>
 
       <div className="relative p-10 grid grid-cols-1 md:grid-cols-3 gap-10 bg-slate-900/30">
-        <BuyerCard type={ProductType.STEEL} label="工业钢铁 (Steel)" colorClass="bg-cyan-500" sellPrice={inputs.sellPriceSteelUSD} inputs={inputs} localState={localState[ProductType.STEEL]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
-        <BuyerCard type={ProductType.PV} label="高效光伏 (PV)" colorClass="bg-amber-500" sellPrice={inputs.sellPricePVUSD} inputs={inputs} localState={localState[ProductType.PV]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
-        <BuyerCard type={ProductType.CAR} label="豪华汽车 (Car)" colorClass="bg-rose-500" sellPrice={inputs.sellPriceCarUSD} inputs={inputs} localState={localState[ProductType.CAR]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
+        <BuyerCard type={ProductType.STEEL} label="工业钢铁 (Steel)" colorClass="bg-cyan-500" sellPrice={inputs.sellPriceSteelUSD} inputs={inputs} setInputs={setInputs} localState={localState[ProductType.STEEL]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
+        <BuyerCard type={ProductType.PV} label="高效光伏 (PV)" colorClass="bg-amber-500" sellPrice={inputs.sellPricePVUSD} inputs={inputs} setInputs={setInputs} localState={localState[ProductType.PV]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
+        <BuyerCard type={ProductType.CAR} label="豪华汽车 (Car)" colorClass="bg-rose-500" sellPrice={inputs.sellPriceCarUSD} inputs={inputs} setInputs={setInputs} localState={localState[ProductType.CAR]} updateState={updateState} handleSync={handleSync} setModalType={setModalType} />
       </div>
 
       {modalType && (
